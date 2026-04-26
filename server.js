@@ -19,6 +19,9 @@ const readerRoutes = require('./routes/readerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bookshelfRoutes = require('./routes/bookshelfRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const bookmarkRoutes = require('./routes/bookmarkRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Middleware
 app.use(cors({
@@ -61,50 +64,11 @@ app.use('/api/reader', readerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bookshelf', bookshelfRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/ai', aiRoutes);
 
-// POST /api/v1/feedback  — called by FeedbackWidget / FeedbackService
-app.post('/api/v1/feedback', async (req, res) => {
-  try {
-    const Feedback = require('./models/Feedback');
-    const { userId, type, rating, message } = req.body;
-
-    if (!message || !String(message).trim()) {
-      return res.status(400).json({ message: 'Message is required' });
-    }
-
-    // Resolve numeric legacy userId → MongoDB ObjectId
-    const mongoUserId = await resolveMongoUserId(userId);
-    if (!mongoUserId) {
-      return res.status(400).json({ message: 'Invalid or missing userId' });
-    }
-
-    const entry = new Feedback({
-      userId: mongoUserId,
-      message: String(message).trim(),
-      rating: rating != null ? Number(rating) : undefined,
-      appVersion: req.body.appVersion || undefined,
-      deviceInfo: req.body.deviceInfo || undefined,
-      status: 'pending'
-    });
-
-    await entry.save();
-    res.status(201).json({ success: true, message: 'Feedback received', id: entry._id });
-  } catch (e) {
-    console.error('[feedback] error:', e.message);
-    res.status(500).json({ message: 'Server error', error: e.message });
-  }
-});
-
-// GET /api/v1/feedback  — admin: list all feedback
-app.get('/api/v1/feedback', async (req, res) => {
-  try {
-    const Feedback = require('./models/Feedback');
-    const items = await Feedback.find().sort('-createdAt').limit(200);
-    res.json(items);
-  } catch (e) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// Feedback routes migrated to /api/v1/feedback (routes/feedbackRoutes.js)
 
 // Basic Health Check Route
 app.get('/api/status', (req, res) => {
@@ -502,5 +466,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`Mobile Backend Server running on port ${PORT}`);
+  console.log(`🚀 [v2.1-AI-READY] Mobile Backend Server running on port ${PORT}`);
 });

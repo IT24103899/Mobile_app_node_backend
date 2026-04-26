@@ -39,6 +39,14 @@ exports.addToBookshelf = async (req, res) => {
       status: 'want-to-read'
     });
     
+    // Sync with separate Favourite collection if needed
+    if (listType === 'favourites') {
+      try {
+        const Favourite = require('../models/Favourite');
+        await Favourite.create({ user: req.user._id, bookId });
+      } catch (_) { /* Ignore duplicate or errors to keep main flow working */ }
+    }
+    
     res.status(201).json(item);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -52,6 +60,13 @@ exports.removeFromBookshelf = async (req, res) => {
     // Note: If they want it removed from ALL lists, execute deleteMany.
     // Standard frontend just expects it removed.
     await Bookshelf.deleteMany({ user: req.user._id, bookId: req.params.bookId });
+    
+    // Sync with separate Favourite collection
+    try {
+      const Favourite = require('../models/Favourite');
+      await Favourite.findOneAndDelete({ user: req.user._id, bookId: req.params.bookId });
+    } catch (_) {}
+
     res.json({ message: 'Removed from bookshelf' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

@@ -24,10 +24,20 @@ const newBooks = [
   { legacyId: 120, title: "The Odyssey", author: "Homer", description: "Literature's grandest evocation of life's journey, at once an ageless human story and an individual test of moral endurance. Homer's epic tale of Odysseus and his ten-year journey home after the Trojan War.", content: "Book 1: Tell me, O muse, of that ingenious hero who travelled far and wide after he had sacked the famous town of Troy...", totalPages: 541, coverUrl: "https://covers.openlibrary.org/b/id/14539690-L.jpg", pdfUrl: "https://www.planetebook.com/free-ebooks/the-odyssey.pdf", isbn: "978-0140268867", publicationYear: 1900, category: "Epic Poetry", isDeleted: false, isAvailable: true }
 ];
 
-mongoose.connect('mongodb://127.0.0.1:27017/elibrary_mobile')
+const dotenv = require('dotenv');
+dotenv.config();
+
+mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
+    // Check if books already exist to avoid duplicates
+    const count = await Book.countDocuments();
+    if (count > 0) {
+      console.log(`⚠️ Books already exist (${count}). Clearing collection first...`);
+      await Book.deleteMany({});
+    }
+
     const result = await Book.insertMany(newBooks);
-    console.log(`✅ Successfully added ${result.length} books to MongoDB!`);
+    console.log(`✅ Successfully added ${result.length} books to MongoDB Atlas!`);
     console.log('\nAdded books:');
     result.forEach(b => console.log(`  • ${b.title} by ${b.author} (${b.category})`));
     const totalBooks = await Book.countDocuments({ isAvailable: true });
@@ -35,6 +45,6 @@ mongoose.connect('mongodb://127.0.0.1:27017/elibrary_mobile')
     process.exit(0);
   })
   .catch(e => {
-    console.error('❌ Error:', e.message);
+    console.error('❌ Connection or Insertion Error:', e.message);
     process.exit(1);
   });

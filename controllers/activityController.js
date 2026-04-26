@@ -9,6 +9,11 @@ const resolveBookId = (id) => {
 
 const updateActivity = async (req, res) => {
   try {
+    // Handle case where user doesn't exist in database
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not found. Please log in again.' });
+    }
+
     const { bookId: rawBookId, pageNumber, page } = req.body;
     const finalPage = pageNumber !== undefined ? pageNumber : page;
     const bookId = resolveBookId(rawBookId);
@@ -39,6 +44,12 @@ const updateActivity = async (req, res) => {
 
 const getHistory = async (req, res) => {
   try {
+    // Handle case where user doesn't exist in database
+    if (!req.user) {
+      console.log('❌ [getHistory] User not found in database');
+      return res.status(401).json({ message: 'User not found. Please log in again.' });
+    }
+
     console.log('📖 [getHistory] User ID:', req.user._id);
     const history = await Activity.find({ user: req.user._id }).sort('-lastReadAt');
     console.log('📊 [getHistory] Found records:', history.length);
@@ -87,6 +98,11 @@ const getHistory = async (req, res) => {
 
 const getReadingStats = async (req, res) => {
   try {
+    // Handle case where user doesn't exist in database
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not found. Please log in again.' });
+    }
+
     const history = await Activity.find({ user: req.user._id });
     
     // Total distinct books the user has interacted with (using normalized IDs)
@@ -139,6 +155,11 @@ const getReadingStats = async (req, res) => {
 
 const getReadingProgress = async (req, res) => {
   try {
+    // Handle case where user doesn't exist in database
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not found. Please log in again.' });
+    }
+
     const { bookId } = req.params;
     const activity = await Activity.findOne({ user: req.user._id, bookId });
     if (!activity) return res.json({ pageNumber: 0 });

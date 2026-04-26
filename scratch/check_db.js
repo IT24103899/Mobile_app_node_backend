@@ -1,35 +1,34 @@
-require('dotenv').config({ path: '../.env' });
 const mongoose = require('mongoose');
-const Book = require('../models/Book');
-const Activity = require('../models/Activity');
+const dotenv = require('dotenv');
+const path = require('path');
 
-async function check() {
+// Load env
+dotenv.config();
+
+const checkDb = async () => {
   try {
-    // using absolute connection string for testing
-    await mongoose.connect('mongodb://127.0.0.1:27017/elibrary_mobile');
-    const book1984 = await Book.findOne({ title: /1984/i });
-    console.log('1984 Book:', book1984);
-    
-    // get recent activities
-    const activities = await Activity.find().sort('-lastReadAt').limit(5);
-    console.log('\n--- Recent Activities ---');
-    console.log(activities);
+    console.log('Connecting to:', process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('✅ Connected to MongoDB');
 
-    // check if activity bookIds exist
-    const bookIds = activities.map(a => a.bookId);
-    const books = await Book.find({
-       $or: [
-           { legacyId: { $in: bookIds.map(id => Number(id)).filter(id => !isNaN(id)) } },
-           { _id: { $in: bookIds.filter(id => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id)) } }
-       ]
-    });
-    
-    console.log('\n--- Books for these Activities ---');
-    console.log(books.map(b => `${b._id} / ${b.legacyId} - ${b.title}`));
+    // Use connection to list collections
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    console.log('Collections:', collections.map(c => c.name));
 
-    mongoose.connection.close();
-  } catch (e) {
-    console.error(e);
+    const User = mongoose.model('User', new mongoose.Schema({}), 'users');
+    const Book = mongoose.model('Book', new mongoose.Schema({}), 'books');
+
+    const userCount = await User.countDocuments();
+    const bookCount = await Book.countDocuments();
+
+    console.log(`Users: ${userCount}`);
+    console.log(`Books: ${bookCount}`);
+
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Connection failed:', error.message);
+    process.exit(1);
   }
-}
-check();
+};
+
+checkDb();
