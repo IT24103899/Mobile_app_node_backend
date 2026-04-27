@@ -262,7 +262,7 @@ const enrichWithBookData = async (activities) => {
   const Book = require('./models/Book');
   const mongoose = require('mongoose');
 
-  const bookIds = [...new Set(activities.map(a => a.bookId).filter(id => id != null && !Number.isNaN(id)))];
+  const bookIds = [...new Set(activities.map(a => a.bookId).filter(id => id != null))];
 
   // Separate numeric legacyIds from ObjectId strings
   const numericIds = bookIds.filter(id => typeof id === 'number');
