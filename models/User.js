@@ -21,7 +21,8 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin']
   },
   profileImage: { type: String, default: '' },
-  legacyId: { type: Number, default: null }
+  legacyId: { type: Number, default: null },
+  isPremium: { type: Boolean, default: false }
 }, { timestamps: true, strict: false });
 
 // Hash the password securely before saving to the database

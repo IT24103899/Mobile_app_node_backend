@@ -22,6 +22,7 @@ const searchRoutes = require('./routes/searchRoutes');
 const bookmarkRoutes = require('./routes/bookmarkRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 // Middleware
 app.use(cors({
@@ -67,6 +68,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Feedback routes migrated to /api/v1/feedback (routes/feedbackRoutes.js)
 
