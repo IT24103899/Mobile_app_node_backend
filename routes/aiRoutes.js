@@ -8,18 +8,26 @@ const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'https://python-a-9.onrender.
 // Helper for proxying requests
 async function proxyRequest(endpoint, method, body = null) {
   try {
+    console.log(`[AI Proxy] Routing ${method} to: ${PYTHON_AI_URL}${endpoint}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for AI
+
     const options = {
       method,
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal
     };
     if (body) options.body = JSON.stringify(body);
 
     const response = await fetch(`${PYTHON_AI_URL}${endpoint}`, options);
+    clearTimeout(timeoutId);
+    
     const data = await response.json();
+    console.log(`[AI Proxy] Received status ${response.status} from Python Engine`);
     return { status: response.status, data };
   } catch (error) {
     console.error(`[AI Proxy Error] ${endpoint}:`, error.message);
-    return { status: 500, data: { error: 'AI Engine unreachable' } };
+    return { status: 503, data: { error: 'AI Engine unreachable or timed out', details: error.message } };
   }
 }
 
