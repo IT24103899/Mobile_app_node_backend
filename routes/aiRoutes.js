@@ -40,6 +40,12 @@ router.get('/health', async (req, res) => {
 // 2. Recommend by Idea
 router.post('/recommend/idea', protect, async (req, res) => {
   const result = await proxyRequest('/recommend/idea', 'POST', req.body);
+  
+  // Wrap direct array into the 'recommendations' object expected by the mobile app
+  if (result.status === 200 && Array.isArray(result.data)) {
+    return res.status(200).json({ recommendations: result.data });
+  }
+  
   res.status(result.status).json(result.data);
 });
 
