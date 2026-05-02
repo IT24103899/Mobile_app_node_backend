@@ -33,26 +33,20 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
-      // --- SEND WELCOME EMAIL ---
-      try {
-        await sendEmail({
-          email: user.email,
-          subject: 'Welcome to E-Library! 📚',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #4f46e5; text-align: center;">Welcome, ${user.name}!</h2>
-              <p>Thank you for joining our E-Library family. We are excited to have you on board!</p>
-              <p>You can now explore thousands of books, track your reading progress, and use our AI Genius to find your next favorite story.</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <span style="background-color: #4f46e5; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none;">Start Reading Now</span>
-              </div>
-              <p style="font-size: 0.8em; color: #777; text-align: center;">If you didn't create this account, please ignore this email.</p>
-            </div>
-          `
-        });
-      } catch (err) {
-        console.error('Welcome Email Error:', err.message);
-      }
+      // --- SEND WELCOME EMAIL (Non-blocking background task) ---
+      // We do NOT 'await' this so the registration completes instantly even if email config is missing
+      sendEmail({
+        email: user.email,
+        subject: 'Welcome to E-Library! 📚',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #4f46e5; text-align: center;">Welcome, ${user.name}!</h2>
+            <p>Thank you for joining our E-Library family. We are excited to have you on board!</p>
+            <p>You can now explore thousands of books, track your reading progress, and use our AI Genius to find your next favorite story.</p>
+            <p style="font-size: 0.8em; color: #777; text-align: center;">If you didn't create this account, please ignore this email.</p>
+          </div>
+        `
+      }).catch(err => console.error('Background Welcome Email Error:', err.message));
 
       res.status(201).json({
         _id: user._id,
@@ -107,37 +101,36 @@ const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'No user found with that email' });
     }
 
-    // Generate 6-digit numeric OTP (Better for mobile UX)
+    // Generate 6-digit numeric OTP
     const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
     
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
     await user.save();
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Password Reset Verification Code 🔐',
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #4f46e5; text-align: center;">Reset Your Password</h2>
-            <p>You requested to reset your password. Use the following 6-digit verification code to proceed:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <h1 style="letter-spacing: 10px; color: #4f46e5; background: #f3f4f6; padding: 20px; border-radius: 10px; display: inline-block;">${resetToken}</h1>
-            </div>
-            <p>This code will expire in <b>10 minutes</b>.</p>
-            <p style="font-size: 0.8em; color: #777;">If you didn't request this, please ignore this email and your password will remain unchanged.</p>
+    // Send email in background
+    sendEmail({
+      email: user.email,
+      subject: 'Password Reset Verification Code 🔐',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4f46e5; text-align: center;">Reset Your Password</h2>
+          <p>You requested to reset your password. Use the following 6-digit verification code to proceed:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <h1 style="letter-spacing: 10px; color: #4f46e5; background: #f3f4f6; padding: 20px; border-radius: 10px; display: inline-block;">${resetToken}</h1>
           </div>
-        `
-      });
+          <p>This code will expire in <b>10 minutes</b>.</p>
+        </div>
+      `
+    }).then(() => {
+        console.log('Reset email sent successfully to:', user.email);
+    }).catch(err => {
+        console.error('Background Reset Email Error:', err.message);
+    });
 
-      res.status(200).json({ message: 'Verification code sent to email' });
-    } catch (err) {
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpires = undefined;
-      await user.save();
-      return res.status(500).json({ message: 'Email could not be sent' });
-    }
+    // Return success immediately
+    res.status(200).json({ message: 'If that email exists, a verification code has been sent.' });
+
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
