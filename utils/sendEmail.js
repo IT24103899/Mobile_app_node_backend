@@ -5,14 +5,24 @@ const nodemailer = require('nodemailer');
  * Supports: Welcome Emails, Password Reset Tokens
  */
 const sendEmail = async (options) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('❌ EMAIL_USER or EMAIL_PASS is missing in environment variables!');
+    throw new Error('Email configuration missing');
+  }
+
   // 1) Create a transporter
   // Note: For production, use service like SendGrid, Mailgun, or Gmail with App Password
   const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 
   // 2) Define the email options
@@ -25,7 +35,8 @@ const sendEmail = async (options) => {
   };
 
   // 3) Actually send the email
-  await transporter.sendMail(mailOptions);
+  const info = await transporter.sendMail(mailOptions);
+  console.log('✅ Email sent: %s', info.messageId);
 };
 
 module.exports = sendEmail;

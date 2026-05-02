@@ -95,41 +95,47 @@ const loginUser = async (req, res) => {
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    console.log('🔍 Forgot Password request for:', email);
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
+      console.log('❌ No user found for:', email);
       return res.status(404).json({ message: 'No user found with that email' });
     }
 
     // Generate 6-digit numeric OTP
     const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('🔑 Generated OTP:', resetToken, 'for', user.email);
     
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
     await user.save();
+    console.log('💾 User record updated with OTP');
 
-    // Send email in background
-    sendEmail({
-      email: user.email,
-      subject: 'Password Reset Verification Code 🔐',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #4f46e5; text-align: center;">Reset Your Password</h2>
-          <p>You requested to reset your password. Use the following 6-digit verification code to proceed:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <h1 style="letter-spacing: 10px; color: #4f46e5; background: #f3f4f6; padding: 20px; border-radius: 10px; display: inline-block;">${resetToken}</h1>
+    // Send email (Awaited for better error tracking during development)
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Reset Verification Code 🔐',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #4f46e5; text-align: center;">Reset Your Password</h2>
+            <p>Hello ${user.name || 'User'},</p>
+            <p>You requested to reset your password. Use the following 6-digit verification code to proceed:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <h1 style="letter-spacing: 10px; color: #4f46e5; background: #f3f4f6; padding: 20px; border-radius: 10px; display: inline-block;">${resetToken}</h1>
+            </div>
+            <p>This code will expire in <b>10 minutes</b>. If you didn't request this, please ignore this email.</p>
+            <p>Regards,<br>E-Library Support Team</p>
           </div>
-          <p>This code will expire in <b>10 minutes</b>.</p>
-        </div>
-      `
-    }).then(() => {
-        console.log('Reset email sent successfully to:', user.email);
-    }).catch(err => {
-        console.error('Background Reset Email Error:', err.message);
-    });
-
-    // Return success immediately
-    res.status(200).json({ message: 'If that email exists, a verification code has been sent.' });
+        `
+      });
+      console.log('✅ Reset email sent successfully to:', user.email);
+      res.status(200).json({ message: 'If that email exists, a verification code has been sent.' });
+    } catch (err) {
+      console.error('❌ Reset Email Error:', err.message);
+      res.status(500).json({ message: 'Error sending verification email. Please check your configuration.' });
+    }
 
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
