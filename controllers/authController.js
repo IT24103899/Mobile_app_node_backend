@@ -33,22 +33,27 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
-      // --- SEND WELCOME EMAIL (Non-blocking background task) ---
-      // We do NOT 'await' this so the registration completes instantly even if email config is missing
-      sendEmail({
-        email: user.email,
-        subject: 'Welcome to E-Library! 📚',
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #4f46e5; text-align: center;">Welcome, ${user.name}!</h2>
-            <p>Thank you for joining our E-Library family. We are excited to have you on board!</p>
-            <p>You can now explore thousands of books, track your reading progress, and use our AI Genius to find your next favorite story.</p>
-            <p style="font-size: 0.8em; color: #777; text-align: center;">If you didn't create this account, please ignore this email.</p>
-          </div>
-        `
-      }).catch(err => console.error('Background Welcome Email Error:', err.message));
+      // --- SEND WELCOME EMAIL (Awaited to capture errors during debugging) ---
+      try {
+        await sendEmail({
+          email: user.email,
+          subject: 'Welcome to E-Library! 📚',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #4f46e5; text-align: center;">Welcome, ${user.name}!</h2>
+              <p>Thank you for joining our E-Library family. We are excited to have you on board!</p>
+              <p>You can now explore thousands of books, track your reading progress, and use our AI Genius to find your next favorite story.</p>
+              <p style="font-size: 0.8em; color: #777; text-align: center;">If you didn't create this account, please ignore this email.</p>
+            </div>
+          `
+        });
+      } catch (emailErr) {
+        console.error('❌ Welcome Email Error:', emailErr.message);
+        // We continue anyway, but log it clearly
+      }
 
       res.status(201).json({
+
         _id: user._id,
         id: user._id,
         name: user.name,
@@ -131,10 +136,17 @@ const forgotPassword = async (req, res) => {
         `
       });
       console.log('✅ Reset email sent successfully to:', user.email);
-      res.status(200).json({ message: 'If that email exists, a verification code has been sent.' });
+      res.status(200).json({ 
+        success: true,
+        message: 'A verification code has been sent to your email.' 
+      });
     } catch (err) {
-      console.error('❌ Reset Email Error:', err.message);
-      res.status(500).json({ message: 'Error sending verification email. Please check your configuration.' });
+      console.error('❌ Reset Email Error:', err);
+      res.status(500).json({ 
+        success: false,
+        message: `Error sending verification email: ${err.message}`,
+        debug: 'Ensure EMAIL_USER and EMAIL_PASS are correct in .env'
+      });
     }
 
   } catch (error) {

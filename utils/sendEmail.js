@@ -11,19 +11,37 @@ const sendEmail = async (options) => {
   }
 
   // 1) Create a transporter
-  // Note: For production, use service like SendGrid, Mailgun, or Gmail with App Password
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
+  const transporterConfig = process.env.EMAIL_SERVICE === 'gmail' 
+    ? {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      }
+    : {
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: process.env.EMAIL_PORT || 465,
+        secure: process.env.EMAIL_SECURE === 'false' ? false : true,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      };
+
+  const transporter = nodemailer.createTransport(transporterConfig);
+
+  // Verify connection configuration
+  try {
+    await transporter.verify();
+    console.log('✅ SMTP Transporter Verified');
+  } catch (err) {
+    console.error('❌ SMTP Verification Failed:', err.message);
+    throw new Error(`Email verification failed: ${err.message}`);
+  }
 
   // 2) Define the email options
   const mailOptions = {
@@ -35,8 +53,15 @@ const sendEmail = async (options) => {
   };
 
   // 3) Actually send the email
-  const info = await transporter.sendMail(mailOptions);
-  console.log('✅ Email sent: %s', info.messageId);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully: %s', info.messageId);
+    return info;
+  } catch (err) {
+    console.error('❌ SendMail Error:', err.message);
+    throw err;
+  }
 };
 
 module.exports = sendEmail;
+
