@@ -99,6 +99,7 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/forgot-password
 const forgotPassword = async (req, res) => {
   try {
+    const { email } = req.body;
     const emailToSearch = email.trim().toLowerCase();
     console.log('🔍 Forgot Password request for:', emailToSearch);
     const user = await User.findOne({ email: emailToSearch });
