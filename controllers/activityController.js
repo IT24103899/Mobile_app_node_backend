@@ -48,17 +48,21 @@ const updateActivity = async (req, res) => {
 
     // UPDATE BOOK RECORD: If the book is missing totalPages, update it now that we know it from the reader
     if (totalPages > 0) {
-      const book = await Book.findOne({
-        $or: [
-          { _id: { $exists: true, $eq: bookId.length === 24 ? bookId : null } },
-          { legacyId: Number(bookId) }
-        ].filter(q => q._id !== null || !isNaN(Number(bookId)))
-      });
-      
-      if (book && (!book.totalPages || book.totalPages !== totalPages)) {
-        book.totalPages = totalPages;
-        await book.save();
-        console.log(`📚 Updated Book "${book.title}" totalPages to ${totalPages}`);
+      const isObjectId = typeof bookId === 'string' && bookId.length === 24;
+      const isNumericId = !isNaN(Number(bookId));
+
+      const queryFilters = [];
+      if (isObjectId) queryFilters.push({ _id: bookId });
+      if (isNumericId) queryFilters.push({ legacyId: Number(bookId) });
+
+      if (queryFilters.length > 0) {
+        const book = await Book.findOne({ $or: queryFilters });
+        
+        if (book && (!book.totalPages || book.totalPages !== totalPages)) {
+          book.totalPages = totalPages;
+          await book.save();
+          console.log(`📚 Updated Book "${book.title}" totalPages to ${totalPages}`);
+        }
       }
     }
 
