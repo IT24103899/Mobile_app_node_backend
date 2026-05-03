@@ -11,35 +11,33 @@ const sendEmail = async (options) => {
   }
 
   // 1) Create a transporter
-  const transporterConfig = process.env.EMAIL_SERVICE === 'gmail' 
-    ? {
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      }
-    : {
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-        port: process.env.EMAIL_PORT || 465,
-        secure: process.env.EMAIL_SECURE === 'false' ? false : true,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-        tls: {
-          rejectUnauthorized: false
-        }
-      };
-
-  const transporter = nodemailer.createTransport(transporterConfig);
+  // We use a direct SMTP configuration which is more reliable than the "service" alias on cloud platforms
+  const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT) || 465,
+    secure: process.env.EMAIL_SECURE !== 'false', // Default to true (465)
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+      // Do not fail on invalid certs (common issue with some SMTP proxies)
+      rejectUnauthorized: false
+    }
+  });
 
   // Verify connection configuration
   try {
-    await transporter.verify();
+    // Increased timeout for verification to handle slow cold starts
+    await Promise.race([
+      transporter.verify(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP Verification Timeout')), 10000))
+    ]);
     console.log('✅ SMTP Transporter Verified');
   } catch (err) {
     console.error('❌ SMTP Verification Failed:', err.message);
+    // We log but don't necessarily crash here if we want to try sending anyway, 
+    // but in this case we throw to catch it in the controller
     throw new Error(`Email verification failed: ${err.message}`);
   }
 
